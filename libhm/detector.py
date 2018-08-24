@@ -30,7 +30,7 @@ def detect_planet(img: np.ndarray, o: ephem.Planet, res: float, method=cv2.TM_CC
     if ret is False:
         return None
     else:
-        return ret
+        return float(ret[0][0]), float(ret[0][1]), float(ret[1])
 
 
 
