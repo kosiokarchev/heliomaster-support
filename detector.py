@@ -1,29 +1,15 @@
-# import sys, csv, cv2, datetime
-# import numpy as np
-# import pandas as pd
-# from math import atan
-# from math import pi
-
 import numpy as np, cv2
 import ephem
 
-from libhm import _normalize
-
-
-
-wav_radpx = {"HALPHA" : 1.1260345355325731e-05,
-              "VISIBLE" : 1.1794377267140912e-05}
-
-
-def detect(img: np.ndarray, radius: float, method=cv2.TM_CCOEFF_NORMED, pad: int = 10):
-    side = int(2*radius + pad)
+def detect(img: np.ndarray, diam: float, method=cv2.TM_CCOEFF_NORMED, pad: int = 10):
+    side = int(diam + pad)
     template = np.zeros((side, side), dtype=np.float32)
-    I, J = np.ogrid[:side, :side]
-    sq_dist = (I - side / 2) ** 2 + (J - side / 2) ** 2
-    template[sq_dist < radius ** 2] = 1.0
+    I, J = np.ogrid[-side / 2:side / 2, -side / 2:side / 2]
+    template[I ** 2 + J ** 2 < (diam / 2) ** 2] = 1.0
 
     # opencv doesnt accept float64
-    img = img.astype(np.float32)
+    img = img.astype(np.float32, copy=True)
+    img /= img.max()
 
     # find correlation with template
     res = cv2.matchTemplate(img, template, method)
@@ -40,12 +26,52 @@ def detect(img: np.ndarray, radius: float, method=cv2.TM_CCOEFF_NORMED, pad: int
 
 def detect_planet(img: np.ndarray, o: ephem.Planet, res: float, method=cv2.TM_CCOEFF_NORMED, pad:int=10):
     o.compute(ephem.now())
-    res = detect(img, o.size * res, method, pad)
-    if res is False:
+    ret = detect(img, o.size * res, method, pad)
+    if ret is False:
         return None
     else:
-        return res
+        return ret
 
+
+
+# from libhm import _normalize
+# wav_radpx = {"HALPHA" : 1.1260345355325731e-05,
+#               "VISIBLE" : 1.1794377267140912e-05}
+#
+# pad = 10
+# method = cv2.TM_CCOEFF_NORMED
+#
+# img = _normalize(cv2.imread('track.bmp', cv2.IMREAD_GRAYSCALE))
+# o = ephem.Sun()
+# o.compute(ephem.now())
+# res = 1 / (wav_radpx['HALPHA'] * 206265)
+# diam = o.size * res
+#
+# side = int(diam + pad)
+# template = np.zeros((side, side), dtype=np.float32)
+# I, J = np.ogrid[-side/2:side/2, -side/2:side/2]
+# template[I**2 + J**2 < (diam/2) ** 2] = 1.0
+#
+# # opencv doesnt accept float64
+# img = img.astype(np.float32)
+#
+# # find correlation with template
+# res = cv2.matchTemplate(img, template, method)
+#
+# if res is None:
+#     ret = False
+#
+# min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+#
+# ret = ((np.array(min_loc) + side/2, min_val)
+#         if method in (cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED)
+#         else (np.array(max_loc) + side/2, max_val))
+
+# import sys, csv, cv2, datetime
+# import numpy as np
+# import pandas as pd
+# from math import atan
+# from math import pi
 
 # METHODS = ['cv2.TM_CCOEFF',
 #            'cv2.TM_CCOEFF_NORMED',
